@@ -235,6 +235,77 @@ class DashboardController extends Controller
         }
     }
 
+    /**
+     * Return today's attendance totals for the authenticated user's reporting
+     * hierarchy. Each user is placed in exactly one dashboard bucket.
+     */
+    public function dashboardSummary(Request $request)
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'date' => 'nullable|date_format:Y-m-d',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => $validator->errors(),
+                ], $this->badrequest);
+            }
+
+            $date = $request->input('date', getcurentDate());
+            $userIds = array_values(array_unique(getUsersReportingToAuth($request->user()->id)));
+
+            // The reporting helper already excludes customer roles and inactive
+            // users. Re-querying keeps the total tied to the current user table.
+            $activeUserIds = User::whereIn('id', $userIds)
+                ->where('active', 'Y')
+                ->pluck('id')
+                ->toArray();
+
+            $attendance = Attendance::whereIn('user_id', $activeUserIds)
+                ->whereDate('punchin_date', $date)
+                ->get(['user_id', 'punchin_time', 'working_type']);
+
+            $fullDayLeaveTypes = ['Full Day Leave', 'Leave'];
+            $leaveUserIds = $attendance
+                ->whereIn('working_type', $fullDayLeaveTypes)
+                ->pluck('user_id')
+                ->unique();
+
+            $punchedInUserIds = $attendance
+                ->whereNotIn('working_type', $fullDayLeaveTypes)
+                ->filter(function ($row) {
+                    return !empty($row->punchin_time);
+                })
+                ->pluck('user_id')
+                ->unique();
+
+            $totalUsers = count($activeUserIds);
+            $punchedIn = $punchedInUserIds->count();
+            $onLeave = $leaveUserIds->count();
+            $missPunch = max(0, $totalUsers - $punchedIn - $onLeave);
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Dashboard summary retrieved successfully.',
+                'data' => [
+                    'date' => $date,
+                    'total_users' => $totalUsers,
+                    'total_punch_in' => $punchedIn,
+                    'total_not_punch_in' => $missPunch,
+                    'total_leave_today' => $onLeave,
+                    'reporting_user_ids' => $activeUserIds,
+                ],
+            ], $this->successStatus);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => $e->getMessage(),
+            ], $this->internalError);
+        }
+    }
+
     public function getKyc(Request $request)
     {
 
