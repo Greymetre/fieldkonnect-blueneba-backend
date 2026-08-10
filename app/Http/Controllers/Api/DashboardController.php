@@ -256,10 +256,12 @@ class DashboardController extends Controller
             $date = $request->input('date', getcurentDate());
             $userIds = array_values(array_unique(getUsersReportingToAuth($request->user()->id)));
 
-            // The reporting helper already excludes customer roles and inactive
-            // users. Re-querying keeps the total tied to the current user table.
+            // Match the population used by the web Attendance Summary Report:
+            // active users in this reporting hierarchy whose attendance-report
+            // option is explicitly enabled on the user master.
             $activeUserIds = User::whereIn('id', $userIds)
                 ->where('active', 'Y')
+                ->where('show_attandance_report', '1')
                 ->pluck('id')
                 ->toArray();
 
