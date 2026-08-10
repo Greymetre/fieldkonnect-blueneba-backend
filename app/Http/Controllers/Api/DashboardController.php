@@ -281,7 +281,14 @@ class DashboardController extends Controller
                     return !empty($row->punchin_time);
                 });
 
-            $totalUsers = count($activeUserIds);
+            // The CRM user total represents reportable staff and does not count
+            // the logged-in manager. Keep the manager in the attendance query,
+            // because the CRM Attendance Report includes their own punch row.
+            $totalUserIds = array_values(array_filter($activeUserIds, function ($userId) use ($request) {
+                return (int) $userId !== (int) $request->user()->id;
+            }));
+
+            $totalUsers = count($totalUserIds);
             $punchedIn = $punchedInRecords->count();
             $onLeave = $leaveRecords->count();
             $missPunch = max(0, $totalUsers - $punchedIn - $onLeave);
@@ -295,7 +302,7 @@ class DashboardController extends Controller
                     'total_punch_in' => $punchedIn,
                     'total_not_punch_in' => $missPunch,
                     'total_leave_today' => $onLeave,
-                    'reporting_user_ids' => $activeUserIds,
+                    'reporting_user_ids' => $totalUserIds,
                 ],
             ], $this->successStatus);
         } catch (\Exception $e) {
