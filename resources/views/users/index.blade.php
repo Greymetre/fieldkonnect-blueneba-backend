@@ -53,7 +53,7 @@
                     <div class="p-2" style="width: 250px;">
                       <select class="selectpicker" name="active" id="active" data-style="select-with-transition" title="Select User Status">
                         <option value="">Select User Status</option>
-                        <option value="Y">Active</option>
+                        <option value="Y" selected>Active</option>
                         <option value="N">Inactive</option>
                       </select>
                     </div>

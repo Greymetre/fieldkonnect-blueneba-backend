@@ -114,14 +114,14 @@ class UsersDataTable extends DataTable
     public function query(User $model, Request $request)
     {
         $userids = getUsersReportingToAuth();
+        $requestedStatus = $request->input('active');
+        $activeStatus = in_array($requestedStatus, ['Y', 'N'], true) ? $requestedStatus : 'Y';
         $data = $model->with('createdbyname', 'getbranch', 'getdesignation', 'reportinginfo', 'userinfo', 'getdivision')
-            ->where(function ($query) use ($userids, $request) {
+            ->where(function ($query) use ($userids, $request, $activeStatus) {
                 if (!Auth::user()->hasRole('superadmin') && !Auth::user()->hasRole('Admin') && !Auth::user()->hasRole('CRM_Support') && !Auth::user()->hasRole('HR Admin')) {
                     $query->whereIn('id', $userids);
                 }
-                if ($request->filled('active')) {
-                    $query->where('active', $request->active);
-                }
+                $query->where('active', $activeStatus);
                 if ($request->filled('division_id')) {
                     $query->where('division_id', $request->division_id);
                 }
