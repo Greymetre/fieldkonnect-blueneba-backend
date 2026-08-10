@@ -270,22 +270,20 @@ class DashboardController extends Controller
                 ->get(['user_id', 'punchin_time', 'working_type']);
 
             $fullDayLeaveTypes = ['Full Day Leave', 'Leave'];
-            $leaveUserIds = $attendance
-                ->whereIn('working_type', $fullDayLeaveTypes)
-                ->pluck('user_id')
-                ->unique();
+            // CRM Attendance Report counts attendance rows, not distinct user IDs.
+            // Use the same rule so the dashboard count matches the report total.
+            $leaveRecords = $attendance
+                ->whereIn('working_type', $fullDayLeaveTypes);
 
-            $punchedInUserIds = $attendance
+            $punchedInRecords = $attendance
                 ->whereNotIn('working_type', $fullDayLeaveTypes)
                 ->filter(function ($row) {
                     return !empty($row->punchin_time);
-                })
-                ->pluck('user_id')
-                ->unique();
+                });
 
             $totalUsers = count($activeUserIds);
-            $punchedIn = $punchedInUserIds->count();
-            $onLeave = $leaveUserIds->count();
+            $punchedIn = $punchedInRecords->count();
+            $onLeave = $leaveRecords->count();
             $missPunch = max(0, $totalUsers - $punchedIn - $onLeave);
 
             return response()->json([
