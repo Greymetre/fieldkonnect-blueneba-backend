@@ -132,12 +132,16 @@ class UsersDataTable extends DataTable
                     $query->where('department_id', $request->department_id);
                 }
             })
-            ->whereHas('roles', function ($query) use ($request) {
-                if ($request->user_type == 'customer') {
-                    $query->whereIn('id', config('constants.customer_roles'));
-                } else {
-                    $query->whereNotIn('id', config('constants.customer_roles'));
-                }
+            ->when($request->user_type === 'customer', function ($query) {
+                $query->whereHas('roles', function ($roleQuery) {
+                    $roleQuery->whereIn('id', config('constants.customer_roles'));
+                });
+            }, function ($query) {
+                // Role-less users are employees too. Using whereHas(...whereNotIn)
+                // excluded them, which is common for deactivated accounts.
+                $query->whereDoesntHave('roles', function ($roleQuery) {
+                    $roleQuery->whereIn('id', config('constants.customer_roles'));
+                });
             })
             ->latest();
 
