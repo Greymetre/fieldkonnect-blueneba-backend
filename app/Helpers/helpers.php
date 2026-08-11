@@ -1188,9 +1188,9 @@ if (!function_exists('SendPushNotification')) {
 
             $fcmToken = $user->notification_id;
             $title = 'FieldKonnect';
-            $credentialsPath = storage_path('app/blueneba-7fae7-firebase-adminsdk-fbsvc-9347e219cc.json');
+            $credentialsPath = storage_path('app/blueneba-c1ea9-firebase-adminsdk-fbsvc-b5acf770b9.json');
             $scopes = ['https://www.googleapis.com/auth/firebase.messaging'];
-            $projectId = 'blueneba-7fae7';
+            $projectId = 'blueneba-c1ea9';
             $deviceToken = $fcmToken;
 
             $client = new Client();
