@@ -1182,21 +1182,39 @@ if (!function_exists('SendPushNotification')) {
         try {
             $user = User::find($user_id);
 
-            if (!$user || empty($user->notification_id)) {
-                return false; // no user or no fcm token
+            if (!$user) {
+                \Log::warning('Push notification skipped: user not found.', ['user_id' => $user_id]);
+                return false;
             }
 
-            $fcmToken = $user->notification_id;
+            if (empty($user->notification_id)) {
+                \Log::warning('Push notification skipped: user has no FCM token.', ['user_id' => $user_id]);
+                return false;
+            }
+
+            $fcmToken = trim($user->notification_id);
             $title = 'FieldKonnect';
             $credentialsPath = storage_path('app/blueneba-c1ea9-firebase-adminsdk-fbsvc-b5acf770b9.json');
             $scopes = ['https://www.googleapis.com/auth/firebase.messaging'];
             $projectId = 'blueneba-c1ea9';
             $deviceToken = $fcmToken;
 
+            if (!is_readable($credentialsPath)) {
+                \Log::error('Push notification failed: Firebase credentials file is missing or unreadable.', [
+                    'credentials_path' => $credentialsPath,
+                ]);
+                return false;
+            }
+
             $client = new Client();
             $credentials = new ServiceAccountCredentials($scopes, $credentialsPath);
-            $credentials->fetchAuthToken();
-            $token = $credentials->getLastReceivedToken()['access_token'];
+            $authToken = $credentials->fetchAuthToken();
+            $token = $authToken['access_token'] ?? null;
+
+            if (empty($token)) {
+                \Log::error('Push notification failed: Firebase OAuth access token was not returned.');
+                return false;
+            }
 
             $messagePayload = [
                 'message' => [
@@ -1235,14 +1253,21 @@ if (!function_exists('SendPushNotification')) {
                     'Content-Type'  => 'application/json',
                 ],
                 'json'    => $messagePayload,
+                'timeout' => 15,
             ]);
 
             if ($response->getStatusCode() == 200) {
+                \Log::info('Push notification sent.', [
+                    'user_id' => $user_id,
+                    'model' => $model,
+                ]);
                 return true;
             }
         } catch (\Exception $e) {
-            // Instead of breaking, just log and bypass
-            \Log::error("Push notification failed: " . $e->getMessage());
+            \Log::error('Push notification failed: ' . $e->getMessage(), [
+                'user_id' => $user_id,
+                'model' => $model,
+            ]);
             return false;
         }
 
