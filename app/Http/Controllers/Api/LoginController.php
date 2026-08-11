@@ -238,6 +238,11 @@ class LoginController extends Controller
 
         if (!empty($notificationId)) {
             $userUpdate['notification_id'] = $notificationId;
+            \Log::info('Mobile FCM token synchronized.', [
+                'user_id' => $user->id,
+                'device_type' => $request->input('device_type'),
+                'token_fingerprint' => substr(hash('sha256', $notificationId), 0, 12),
+            ]);
         }
         if ($request->filled('device_type')) {
             $userUpdate['device_type'] = $request->input('device_type');

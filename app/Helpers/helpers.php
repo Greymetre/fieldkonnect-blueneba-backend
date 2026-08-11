@@ -29,6 +29,7 @@ use App\Models\LeadNotification;
 use App\Models\OpeningStock;
 use Google\Auth\Credentials\ServiceAccountCredentials;
 use GuzzleHttp\Client;
+use GuzzleHttp\Exception\RequestException;
 use Illuminate\Support\Str;
 
 if (! function_exists('sendmessage')) {
@@ -1195,11 +1196,11 @@ if (!function_exists('SendPushNotification')) {
             $fcmToken = trim($user->notification_id);
             $title = 'Blueneba';
             $configuredCredentials = config('firebase.projects.app.credentials');
-            $credentialsPath = is_string($configuredCredentials) && $configuredCredentials !== ''
-                ? $configuredCredentials
-                : storage_path('app/blueneba-c1ea9-firebase-adminsdk-fbsvc-b5acf770b9.json');
+            $fallbackCredentials = storage_path('app/blueneba-c1ea9-firebase-adminsdk-fbsvc-b5acf770b9.json');
+            $credentialsPath = is_readable($fallbackCredentials)
+                ? $fallbackCredentials
+                : (is_string($configuredCredentials) ? $configuredCredentials : $fallbackCredentials);
             $scopes = ['https://www.googleapis.com/auth/firebase.messaging'];
-            $projectId = 'blueneba-c1ea9';
             $deviceToken = $fcmToken;
 
             if (!is_readable($credentialsPath)) {
@@ -1208,6 +1209,17 @@ if (!function_exists('SendPushNotification')) {
                 ]);
                 return false;
             }
+
+            $serviceAccount = json_decode((string) file_get_contents($credentialsPath), true);
+            $projectId = $serviceAccount['project_id'] ?? 'blueneba-c1ea9';
+            \Log::info('Push notification delivery attempt.', [
+                'user_id' => $user_id,
+                'model' => $model,
+                'project_id' => $projectId,
+                'token_fingerprint' => substr(hash('sha256', $deviceToken), 0, 12),
+                'credentials_file' => basename($credentialsPath),
+                'configured_credentials_fallback_used' => $credentialsPath === $fallbackCredentials,
+            ]);
 
             $client = new Client();
             $credentials = new ServiceAccountCredentials($scopes, $credentialsPath);
@@ -1268,6 +1280,16 @@ if (!function_exists('SendPushNotification')) {
                 ]);
                 return true;
             }
+        } catch (RequestException $e) {
+            $response = $e->getResponse();
+            \Log::error('Push notification failed at FCM.', [
+                'user_id' => $user_id,
+                'model' => $model,
+                'http_status' => $response?->getStatusCode(),
+                'fcm_response' => $response ? (string) $response->getBody() : null,
+                'error' => $e->getMessage(),
+            ]);
+            return false;
         } catch (\Exception $e) {
             \Log::error('Push notification failed: ' . $e->getMessage(), [
                 'user_id' => $user_id,
