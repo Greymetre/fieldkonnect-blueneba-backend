@@ -1201,10 +1201,30 @@ if (!function_exists('SendPushNotification')) {
             $messagePayload = [
                 'message' => [
                     'token' => $deviceToken,
+                    'notification' => [
+                        'title' => $title,
+                        'body' => $message,
+                    ],
                     'data' => [
                         'title' => $title,
                         'body'  => $message,
                         'image' => $model,
+                    ],
+                    'android' => [
+                        'priority' => 'high',
+                        'notification' => [
+                            'sound' => 'default',
+                        ],
+                    ],
+                    'apns' => [
+                        'headers' => [
+                            'apns-priority' => '10',
+                        ],
+                        'payload' => [
+                            'aps' => [
+                                'sound' => 'default',
+                            ],
+                        ],
                     ],
                 ],
             ];
