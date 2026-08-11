@@ -1045,7 +1045,9 @@ class LeadController extends Controller
             if (isset($task->task_status) && $task->task_status != $task_status) {
                 if ($task_status == 'Completed') {
                     $request['completed_at'] = date('Y-m-d H:i s');
-                    SendPushNotification($task->created_by, '📝 Your assigned task ' . $task->title . ' has been completed. (By-  ' . $request->user()->name . ')', 'task_management');
+                    $message = '📝 Your assigned task ' . $task->title . ' has been completed. (By-  ' . $request->user()->name . ')';
+                    SendPushNotification($task->created_by, $message, 'task_management');
+                    StoreLeadNotification($task->id, 'Completed Task', $message, $task->created_by, 'task_management');
                 } elseif ($task_status == 'Open') {
                     $request['open_datetime'] = date('Y-m-d H:i s');
                 } elseif ($task_status == 'In progress') {
@@ -1113,10 +1115,15 @@ class LeadController extends Controller
     {
         try {
             $user = $request->user();
-            $notifications = LeadNotification::where(['user_id' => $user->id, 'read' => 0])->latest()->paginate($request->pageSize ?? 30);
+            $notifications = LeadNotification::where('user_id', $user->id)
+                ->when($request->has('read'), function ($query) use ($request) {
+                    $query->where('read', $request->boolean('read'));
+                })
+                ->latest()
+                ->paginate($request->integer('pageSize', 30));
             return response()->json([
                 'status' => 'success',
-                'data' => $notifications->items(),
+                'data' => $notifications,
                 'message' => 'Notifications retrieved successfully'
             ], $this->successStatus);
         } catch (\Exception $e) {

@@ -58,10 +58,13 @@ class SendPendingTaskNotification extends Command
             if ($minutesRemaining <= 10 && $minutesRemaining >= 9) {
                 if ($task->assigned_users->count() > 0) {
                     foreach ($task->assigned_users as $assigned_user) {
+                        $message = '⏰ Reminder: The task "' . $task->title . '" is due in ' . $minutesRemaining . ' minutes.';
                         SendPushNotification(
                             $assigned_user->user_id,
-                            '⏰ Reminder: The task "' . $task->title . '" is due in ' . $minutesRemaining . ' minutes.'
+                            $message,
+                            'task_management'
                         );
+                        StoreLeadNotification($task->id, 'Task Reminder', $message, $assigned_user->user_id, 'task_management');
                     }
                 }
             }
