@@ -342,6 +342,10 @@ class TasksController extends Controller
                         'user_id' => $assignedUserId,
                     ]);
 
+                    $message = '📝 You have been assigned new tasks "' . $task->title . '".';
+                    SendPushNotification($assignedUserId, $message, 'task_management');
+                    StoreLeadNotification($task->id, 'Assigned Task', $message, $assignedUserId, 'task_management');
+
                     $taskLogs[] = [
                         'task_id'         => $task->id,
                         'changed_by'      => $userId,

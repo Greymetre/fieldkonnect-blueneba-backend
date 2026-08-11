@@ -206,6 +206,7 @@ class LeadTasksController extends Controller
             $request->status = 'open';
         }
         if ($lead_task) {
+            $previousAssignedTo = $lead_task->assigned_to;
             if ($request->status == 'completed' && $lead_task->status != 'completed') {
                 $lead_task->update(['close_date' => date('Y-m-d')]);
 
@@ -219,6 +220,11 @@ class LeadTasksController extends Controller
             }
 
             $lead_task->update(['assigned_to' => $request->assigned_to, 'lead_id' => $request->lead_id, 'created_by' => $created_by, 'description' => $request->description, 'date' => $request->date, 'time' => $request->time, 'priority' => $request->priority, 'status' => $request->status]);
+            if ((string) $previousAssignedTo !== (string) $request->assigned_to) {
+                $message = '📝 A new task has been assigned to you.';
+                SendPushNotification($request->assigned_to, $message, 'task');
+                StoreLeadNotification($lead_task->id, 'Assigned Task', $message, $request->assigned_to, 'task');
+            }
             $request->session()->flash('message_success', __('Lead Task Update successfully.'));
         } else {
             $lead_task = LeadTask::create(['assigned_to' => $request->assigned_to, 'lead_id' => $request->lead_id, 'created_by' => $created_by, 'description' => $request->description, 'date' => $request->date, 'time' => $request->time, 'priority' => $request->priority, 'status' => $request->status]);

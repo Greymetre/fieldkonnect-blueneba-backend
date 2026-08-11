@@ -510,7 +510,13 @@ class LeadController extends Controller
         $lead_task = LeadTask::where(['id' => $task_id])->first();
 
         if ($lead_task) {
+            $previousAssignedTo = $lead_task->assigned_to;
             $lead_task->update(['assigned_to' => $request->assigned_to, 'lead_id' => $request->lead_id, 'created_by' => $created_by, 'description' => $request->description, 'date' => $request->date, 'time' => $request->time, 'priority' => $request->priority]);
+            if ((string) $previousAssignedTo !== (string) $request->assigned_to) {
+                $message = '📝 A new task has been assigned to you.';
+                SendPushNotification($request->assigned_to, $message, 'task');
+                StoreLeadNotification($lead_task->id, 'Assigned Task', $message, $request->assigned_to, 'task');
+            }
             $new = false;
         } else {
             $lead_task = LeadTask::create(['assigned_to' => $request->assigned_to, 'lead_id' => $request->lead_id, 'created_by' => $created_by, 'description' => $request->description, 'date' => $request->date, 'time' => $request->time, 'priority' => $request->priority]);
@@ -588,8 +594,8 @@ class LeadController extends Controller
         $msg = '🎯 Lead move to opportunity ' . $cur_status->status_name .
             ': ' . Str::limit($lead_opportunity->lead->company_name, 10, '...') .
             ' by ' . Auth::user()->name;
-        SendPushNotification($lead_opportunity->lead->created_by, $msg, 'opportunity');
-        StoreLeadNotification($lead_opportunity->id, 'New Opportunity', $msg, $lead_opportunity->lead->created_by, 'opportunity');
+        SendPushNotification($lead_opportunity->assigned_to, $msg, 'opportunity');
+        StoreLeadNotification($lead_opportunity->id, 'New Opportunity', $msg, $lead_opportunity->assigned_to, 'opportunity');
 
         if ($new) {
             return response()->json(['status' => 'success', 'message' => 'Opportunity added successfully.', 'data' => $lead_opportunity], 200);

@@ -31,10 +31,13 @@ class SendPendingTaskNotification extends Command
 
             // Send only if remaining time is between 10 and 9 minutes
             if ($minutesRemaining <= 10 && $minutesRemaining >= 9) {
+                $message = '⏰ Reminder: The task "' . $task->description . '" for ' . $task->lead->company_name . ' is due in ' . $minutesRemaining . ' minutes.';
                 SendPushNotification(
                     $task->assigned_to,
-                    '⏰ Reminder: The task "' . $task->description . '" for ' . $task->lead->company_name . ' is due in ' . $minutesRemaining . ' minutes.'
+                    $message,
+                    'task'
                 );
+                StoreLeadNotification($task->id, 'Task Reminder', $message, $task->assigned_to, 'task');
             }
         }
 

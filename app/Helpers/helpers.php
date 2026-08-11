@@ -1193,7 +1193,7 @@ if (!function_exists('SendPushNotification')) {
             }
 
             $fcmToken = trim($user->notification_id);
-            $title = 'FieldKonnect';
+            $title = 'Blueneba';
             $configuredCredentials = config('firebase.projects.app.credentials');
             $credentialsPath = is_string($configuredCredentials) && $configuredCredentials !== ''
                 ? $configuredCredentials
@@ -1229,7 +1229,9 @@ if (!function_exists('SendPushNotification')) {
                     'data' => [
                         'title' => $title,
                         'body'  => $message,
+                        // Keep image for compatibility with older app builds.
                         'image' => $model,
+                        'model' => $model,
                     ],
                     'android' => [
                         'priority' => 'high',
