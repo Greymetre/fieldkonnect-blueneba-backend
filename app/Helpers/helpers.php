@@ -1196,7 +1196,7 @@ if (!function_exists('SendPushNotification')) {
             $fcmToken = trim($user->notification_id);
             $title = 'Blueneba';
             $configuredCredentials = config('firebase.projects.app.credentials');
-            $fallbackCredentials = storage_path('app/blueneba-c1ea9-firebase-adminsdk-fbsvc-b5acf770b9.json');
+            $fallbackCredentials = storage_path('app/blueneba-c1ea9-firebase-adminsdk-fbsvc-bfd22e2f3d.json');
             $credentialsPath = is_readable($fallbackCredentials)
                 ? $fallbackCredentials
                 : (is_string($configuredCredentials) ? $configuredCredentials : $fallbackCredentials);
