@@ -63,72 +63,34 @@ if (! function_exists('sendmessage')) {
 if (! function_exists('sendNotification')) {
     function sendNotification($userid, $data)
     {
-        $token = User::where('id', $userid)->pluck('notification_id')->first();
-        $url = "https://fcm.googleapis.com/fcm/send";
-        // $serverKey = 'AAAAjMeiBjY:APA91bGtua9m0x8v1pNNAX6JhNDjnCvm4HgVQnpUhaFID4WonakTivV72RzttdSs5Aux1ua0BUZQGM3RkzAYuGr8BnQcit2rMEF7-aMhzWnWtoLoMNxsbzRTpTy8k8x6sYPHoLbIh9vX';
+        $sent = SendPushNotification(
+            $userid,
+            (string) ($data['body'] ?? $data['message'] ?? ''),
+            (string) ($data['model'] ?? $data['type'] ?? 'general'),
+            (string) ($data['title'] ?? 'Blueneba')
+        );
 
-        $serverKey = 'AAAAVO4fLoE:APA91bHceRDC8GZgOFCIzfiBjqMx5vqgpC14s3Z-4dh-qOqvyTWg6zl8TTeIwZrepNs_cojgUcY6PbXwGPLx5VuGTiw-5vZUlj7jvasgatM4x22yEyj0gaYVCwpl9vJeJDmdo7E5vWEy';
-        if (!empty($token)) {
-            $notification = array('title' => $data['title'], 'message' => $data['body'], 'time' => date('Y-m-d'), 'image' => "https://source.unsplash.com/user/c_v_r/1900x800");
-            $arrayToSend = array('to' => $token, 'data' => $notification);
-            $json = json_encode($arrayToSend);
-            $headers = array(
-                'Content-Type:application/json',
-                'Authorization:key=' . $serverKey
-            );
-            $ch = curl_init();
-            curl_setopt($ch, CURLOPT_URL, $url);
-            curl_setopt($ch, CURLOPT_POST, true);
-            curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-            curl_setopt($ch, CURLOPT_POSTFIELDS, $json);
-            //Send the request
-            $response = curl_exec($ch);
-            //Close request
-            if ($response === FALSE) {
-                die('FCM Send Error: ' . curl_error($ch));
-            }
-            dd($response);
-            curl_close($ch);
+        if ($sent) {
             Notification::create([
-                'type' => isset($data['title']) ? $data['title'] : '',
-                'data' => isset($data['body']) ? $data['body'] : '',
-                'customer_id' => isset($data['customer_id']) ? $data['customer_id'] : null,
+                'type' => $data['title'] ?? '',
+                'data' => $data['body'] ?? $data['message'] ?? '',
+                'customer_id' => $data['customer_id'] ?? null,
                 'user_id' => $userid
             ]);
         }
+
+        return $sent;
     }
 }
 if (! function_exists('receiverNotification')) {
     function receiverNotification($data, $receiver_id)
     {
-        $url = 'https://fcm.googleapis.com/fcm/send';
-        // $server_key = 'AAAAz12287M:APA91bELeMYiEsqBNzFfKvKgcdPA645159iYFc9fMLxiPTDvWJwoS2xOP14m1ZfbyOkVT9m6qe4aviKIaXUdk3NeO12Ft3NQBJt5J9rnM6fCeMyK98Qsjp5eZdhpj79h07Em7nJ_482Y';
-        $serverKey = 'AAAAVO4fLoE:APA91bHceRDC8GZgOFCIzfiBjqMx5vqgpC14s3Z-4dh-qOqvyTWg6zl8TTeIwZrepNs_cojgUcY6PbXwGPLx5VuGTiw-5vZUlj7jvasgatM4x22yEyj0gaYVCwpl9vJeJDmdo7E5vWEy';
-        $notification_id = User::where('id', $receiver_id)->pluck('notification_id')->first();
-        $fields = array();
-        $fields['data'] = $data;
-        $fields['registration_ids'] = array($notification_id);
-        $headers = array(
-            'Content-Type:application/json',
-            'Authorization:key=' . $server_key
+        return SendPushNotification(
+            $receiver_id,
+            (string) ($data['body'] ?? $data['message'] ?? ''),
+            (string) ($data['model'] ?? $data['type'] ?? 'general'),
+            (string) ($data['title'] ?? 'Blueneba')
         );
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($fields));
-        $result = curl_exec($ch);
-        if ($result === FALSE) {
-            die('FCM Send Error: ' . curl_error($ch));
-        }
-        curl_close($ch);
-        return $result;
     }
 }
 
@@ -1177,31 +1139,22 @@ if (!function_exists('isCustomerUser')) {
     }
 }
 
-if (!function_exists('SendPushNotification')) {
-    function SendPushNotification($user_id, $message, $model = 'lead')
+if (!function_exists('SendPushNotificationToToken')) {
+    function SendPushNotificationToToken($deviceToken, $message, $model = 'general', $title = 'Blueneba')
     {
         try {
-            $user = User::find($user_id);
-
-            if (!$user) {
-                \Log::warning('Push notification skipped: user not found.', ['user_id' => $user_id]);
+            $deviceToken = trim((string) $deviceToken);
+            if ($deviceToken === '') {
+                \Log::warning('Push notification skipped: FCM token is empty.');
                 return false;
             }
 
-            if (empty($user->notification_id)) {
-                \Log::warning('Push notification skipped: user has no FCM token.', ['user_id' => $user_id]);
-                return false;
-            }
-
-            $fcmToken = trim($user->notification_id);
-            $title = 'Blueneba';
             $configuredCredentials = config('firebase.projects.app.credentials');
             $fallbackCredentials = storage_path('app/blueneba-c1ea9-firebase-adminsdk-fbsvc-bfd22e2f3d.json');
             $credentialsPath = is_readable($fallbackCredentials)
                 ? $fallbackCredentials
                 : (is_string($configuredCredentials) ? $configuredCredentials : $fallbackCredentials);
             $scopes = ['https://www.googleapis.com/auth/firebase.messaging'];
-            $deviceToken = $fcmToken;
 
             if (!is_readable($credentialsPath)) {
                 \Log::error('Push notification failed: Firebase credentials file is missing or unreadable.', [
@@ -1213,12 +1166,10 @@ if (!function_exists('SendPushNotification')) {
             $serviceAccount = json_decode((string) file_get_contents($credentialsPath), true);
             $projectId = $serviceAccount['project_id'] ?? 'blueneba-c1ea9';
             \Log::info('Push notification delivery attempt.', [
-                'user_id' => $user_id,
                 'model' => $model,
                 'project_id' => $projectId,
                 'token_fingerprint' => substr(hash('sha256', $deviceToken), 0, 12),
                 'credentials_file' => basename($credentialsPath),
-                'configured_credentials_fallback_used' => $credentialsPath === $fallbackCredentials,
             ]);
 
             $client = new Client();
@@ -1275,15 +1226,14 @@ if (!function_exists('SendPushNotification')) {
 
             if ($response->getStatusCode() == 200) {
                 \Log::info('Push notification sent.', [
-                    'user_id' => $user_id,
                     'model' => $model,
+                    'token_fingerprint' => substr(hash('sha256', $deviceToken), 0, 12),
                 ]);
                 return true;
             }
         } catch (RequestException $e) {
             $response = $e->getResponse();
             \Log::error('Push notification failed at FCM.', [
-                'user_id' => $user_id,
                 'model' => $model,
                 'http_status' => $response?->getStatusCode(),
                 'fcm_response' => $response ? (string) $response->getBody() : null,
@@ -1292,13 +1242,39 @@ if (!function_exists('SendPushNotification')) {
             return false;
         } catch (\Exception $e) {
             \Log::error('Push notification failed: ' . $e->getMessage(), [
-                'user_id' => $user_id,
                 'model' => $model,
             ]);
             return false;
         }
 
         return false;
+    }
+}
+
+if (!function_exists('SendPushNotification')) {
+    function SendPushNotification($user_id, $message, $model = 'lead', $title = 'Blueneba')
+    {
+        $userExists = User::whereKey($user_id)->exists();
+
+        if (!$userExists) {
+            \Log::warning('Push notification skipped: user not found.', ['user_id' => $user_id]);
+            return false;
+        }
+
+        // Always read the latest token directly from the users table when the
+        // event fires, rather than reusing a previously loaded model value.
+        $deviceToken = trim((string) User::whereKey($user_id)->value('notification_id'));
+        if ($deviceToken === '') {
+            \Log::warning('Push notification skipped: user has no FCM token.', ['user_id' => $user_id]);
+            return false;
+        }
+
+        \Log::info('Push notification user token loaded.', [
+            'user_id' => $user_id,
+            'token_fingerprint' => substr(hash('sha256', $deviceToken), 0, 12),
+        ]);
+
+        return SendPushNotificationToToken($deviceToken, $message, $model, $title);
     }
 }
 

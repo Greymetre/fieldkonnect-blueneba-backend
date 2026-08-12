@@ -7,7 +7,7 @@ return [
     'gcm' => [
         'priority' => 'normal',
         'dry_run' => false,
-        'apiKey' => 'AAAAqvNhkm8:APA91bEUUXBPXcifR7wS_jN6NEY7fhDkcDmlBa9wUa31l7TwtLFBDbv4Uz6fHhzvRppBdXJa7B6eMMGlxB2lx7ueqHsXOgs_svETB6AoWROrXPP1XgWik_Oyn0B0g4Fcq8CGzsmldDxX',
+        'apiKey' => env('FCM_LEGACY_SERVER_KEY'),
         // Optional: Default Guzzle request options for each GCM request
         // See https://docs.guzzlephp.org/en/stable/request-options.html
         'guzzle' => [],
@@ -15,7 +15,7 @@ return [
     'fcm' => [
         'priority' => 'normal',
         'dry_run' => false,
-        'apiKey' => 'AAAAqvNhkm8:APA91bEUUXBPXcifR7wS_jN6NEY7fhDkcDmlBa9wUa31l7TwtLFBDbv4Uz6fHhzvRppBdXJa7B6eMMGlxB2lx7ueqHsXOgs_svETB6AoWROrXPP1XgWik_Oyn0B0g4Fcq8CGzsmldDxX',
+        'apiKey' => env('FCM_LEGACY_SERVER_KEY'),
         // Optional: Default Guzzle request options for each FCM request
         // See https://docs.guzzlephp.org/en/stable/request-options.html
         'guzzle' => [],

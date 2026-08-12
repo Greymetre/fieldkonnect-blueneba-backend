@@ -168,7 +168,7 @@ class MobileUserLoginDetailsController extends Controller
                 }
             })
             ->addColumn('multi_login', function ($data) {
-                if(!auth()->user()->hasRole('superadmin')){
+                if (!auth()->user()->hasAnyRole(['superadmin', 'Admin', 'HR_Admin'])) {
                     return '<span class="badge badge-danger" data-id="' . $data['user_id'] . '" data-multi="' . $data['multi_login'] . '">Remove UUID</span>';
                 }
                 if ($data['unique_id'] == NULL) {
@@ -200,6 +200,12 @@ class MobileUserLoginDetailsController extends Controller
 
     public function user_app_details_multi_login(Request $request)
     {
+        abort_unless(
+            auth()->user()->hasAnyRole(['superadmin', 'Admin', 'HR_Admin']),
+            Response::HTTP_FORBIDDEN,
+            '403 Forbidden'
+        );
+
         $user_id = $request->user_id;
         $user = MobileUserLoginDetails::where('user_id', $user_id)->first();
         $user->unique_id = NULL;
